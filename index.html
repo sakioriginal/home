@@ -10,7 +10,7 @@
 
 <script>
 var ip_adresss = 11;
-fetch("https://ipinfo?callback")
+fetch("https://ipinfo.io?callback")
 .then(res => res.json())
 .then(json => document.getElementById("ip_adress").innerHTML = json.ip)
 	
