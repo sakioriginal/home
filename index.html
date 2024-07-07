@@ -2,10 +2,18 @@
 
 <body>
 <div id = "d2">h1</div>
+<div id = "ip_adress">ip</div>div
 
+
+	
 </body>
 
 <script>
+var ip_adress = 11;
+fetch("https://ipinfo?callback")
+.then(res => res.json())
+.then(json = > document.getElementById("ip_adress").innerHTML = json.ip)
+	
 setInterval(function() {
 	document.getElementById("d2").innerHTML = new Date().toLocaleString();
 	}, 1000);
