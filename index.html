@@ -12,7 +12,7 @@
 var ip_adresss = 11;
 fetch("https://ipinfo.io?callback")
 .then(res => res.json())
-.then(json => document.getElementById("ip_adress").innerHTML = json.ip)
+.then(json => document.getElementById("ip_adresss").innerHTML = json.ip)
 	
 setInterval(function() {
 	document.getElementById("d2").innerHTML = new Date().toLocaleString();
