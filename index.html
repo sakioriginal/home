@@ -1,29 +1,309 @@
-<html>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>育児ログ（ミルク・オムツ・冷却）</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+  body {
+    font-family: sans-serif; background:#f4f4f4; padding:20px;
+  }
+  h1 { text-align:center; }
+  .card {
+    background:white; margin:15px 0; padding:15px;
+    border-radius:12px; box-shadow:0 2px 6px rgba(0,0,0,0.1);
+  }
+  button {
+    padding:10px 16px; margin:5px 0;
+    font-size:16px; border:none; border-radius:6px;
+    background:#4CAF50; color:white;
+  }
+  input {
+    padding:5px; font-size:16px; width:80%;
+    margin:5px;
+  }
+  #logs .log { padding:8px 0; border-bottom:1px solid #ddd; }
+</style>
+</head>
 
 <body>
-<div id = "d2">h1</div>
-<div id = "ip_adresss">ip</div>
+
+<h1>育児ログ（家族共有版）</h1>
+
+<!-- ▼▼ 初回設定画面 ▼▼ -->
+<div id="setupPage" class="card" style="display:none;">
+  <h2>🔐 初期設定（初回のみ）</h2>
+  <p>家族の誰か1人の APIキー と BIN_ID を入力してください。</p>
+
+  <input id="apiKeyInput" placeholder="API KEY を入力">
+  <input id="binIdInput" placeholder="BIN ID を入力">
+
+  <button onclick="saveInitialSettings()">保存</button>
+</div>
 
 
-	
-</body>
+<!-- ▼▼ 本編アプリ ▼▼ -->
+<div id="mainApp" style="display:none;">
+
+  <!-- ミルク -->
+  <div class="card">
+    <h2>🍼 ミルク管理</h2>
+    <button onclick="makeMilk()">ミルクを作った</button>
+    <button onclick="fedMilk()">飲ませた（量を入力）</button>
+
+    <br><br>
+    授乳間隔：
+    <select id="interval">
+      <option value="3">3時間</option>
+      <option value="2.5">2.5時間</option>
+      <option value="4">4時間</option>
+    </select>
+
+    <h3 id="nextFeed">次の授乳：--</h3>
+  </div>
+
+  <!-- 冷却 -->
+  <div class="card">
+    <h2>❄️ ミルク冷却</h2>
+    初期温度：<input id="startTemp" type="number" value="70"> ℃  
+    量：<input id="milkVol" type="number" value="200"> ml  
+    <button onclick="manualStartCooldown()">冷却時間を計算して開始</button>
+    <h3 id="cooldownStatus">--</h3>
+
+    <audio id="alarmSound">
+      <source src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg">
+    </audio>
+  </div>
+
+  <!-- オムツ -->
+  <div class="card">
+    <h2>💩 オムツ</h2>
+    <button onclick="addDiaper('pee')">おしっこ</button>
+    <button onclick="addDiaper('poo')">うんち</button>
+  </div>
+
+  <!-- ログ -->
+  <div class="card">
+    <h2>📖 ログ一覧</h2>
+    <div id="logs">読み込み中…</div>
+  </div>
+</div>
+
 
 <script>
-var ip_adresss = 11;
-fetch("https://ipinfo.io?callback")
-.then(res => res.json())
-.then(json => document.getElementById("ip_adresss").innerHTML = json.ip)
-	
-setInterval(function() {
-	document.getElementById("d2").innerHTML = new Date().toLocaleString();
-	}, 1000);
+// ---------------------------------------------------------------
+// ① localStorage の API_KEY/BIN_ID をチェック
+// ---------------------------------------------------------------
+function checkSettings() {
+  const api = localStorage.getItem("jsonbin_api_key");
+  const bin = localStorage.getItem("jsonbin_bin_id");
+
+  if (!api || !bin) {
+    // 未設定 → 初回設定UIを表示
+    document.getElementById("setupPage").style.display = "block";
+  } else {
+    // 設定済 → 本編を表示
+    document.getElementById("mainApp").style.display = "block";
+    refresh(); // データ読み込み開始
+  }
+}
+checkSettings();
 
 
+// ---------------------------------------------------------------
+// ② 初回設定の保存
+// ---------------------------------------------------------------
+function saveInitialSettings() {
+  const api = document.getElementById("apiKeyInput").value;
+  const bin = document.getElementById("binIdInput").value;
 
+  if (!api || !bin) {
+    alert("API KEY と BIN_ID を入力してください");
+    return;
+  }
+
+  localStorage.setItem("jsonbin_api_key", api);
+  localStorage.setItem("jsonbin_bin_id", bin);
+
+  alert("設定を保存しました！");
+  location.reload();
+}
+
+
+// ---------------------------------------------------------------
+// ③ JSONBin load/save（localStorageを使用）
+// ---------------------------------------------------------------
+async function loadData() {
+  const api = localStorage.getItem("jsonbin_api_key");
+  const bin = localStorage.getItem("jsonbin_bin_id");
+  const url = `https://api.jsonbin.io/v3/b/${bin}`;
+
+  const res = await fetch(url, {
+    headers: { "X-Master-Key": api }
+  });
+
+  const json = await res.json();
+  return json.record || { logs: [] };
+}
+
+async function saveData(data) {
+  const api = localStorage.getItem("jsonbin_api_key");
+  const bin = localStorage.getItem("jsonbin_bin_id");
+  const url = `https://api.jsonbin.io/v3/b/${bin}`;
+
+  await fetch(url, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Master-Key": api
+    },
+    body: JSON.stringify(data)
+  });
+}
+
+
+// ---------------------------------------------------------------
+// ④ メイン処理（あなたの元コード）
+// ---------------------------------------------------------------
+let DB = { logs: [] };
+
+async function refresh() {
+  DB = await loadData();
+  renderLogs();
+  calcNextFeeding();
+}
+
+// 🍼 ミルク
+function makeMilk() {
+  const now = Date.now();
+
+  DB.logs.unshift({
+    type: "milk-made",
+    time: now,
+    temp: Number(document.getElementById("startTemp").value),
+    vol:  Number(document.getElementById("milkVol").value)
+  });
+
+  saveData(DB);
+  renderLogs();
+  autoStartCooldownFromMilk();
+}
+
+function fedMilk() {
+  const amount = prompt("飲んだ量（ml）", "150");
+  if (!amount) return;
+
+  const interval = parseFloat(document.getElementById("interval").value);
+  const now = Date.now();
+  const next = now + interval * 60 * 60 * 1000;
+
+  DB.logs.unshift({
+    type: "milk-fed",
+    time: now,
+    amount: Number(amount),
+    nextFeeding: next
+  });
+
+  saveData(DB);
+  renderLogs();
+  calcNextFeeding();
+}
+
+// 💩 オムツ
+function addDiaper(kind) {
+  DB.logs.unshift({
+    type: "diaper",
+    kind,
+    time: Date.now()
+  });
+
+  saveData(DB);
+  renderLogs();
+}
+
+// 📖 表示
+function renderLogs() {
+  const box = document.getElementById("logs");
+  box.innerHTML = "";
+
+  DB.logs.forEach(l => {
+    const d = document.createElement("div");
+    d.className = "log";
+    const t = new Date(l.time).toLocaleString();
+
+    if (l.type === "milk-made") {
+      d.textContent = `🍼 ミルク作成：${t}（${l.vol}ml / ${l.temp}℃）`;
+    } else if (l.type === "milk-fed") {
+      d.textContent = `👶 飲ませた：${t} / ${l.amount}ml`;
+    } else if (l.type==="diaper") {
+      d.textContent = (l.kind==="pee"?"💧 おしっこ":"💩 うんち") + "：" + t;
+    }
+
+    box.appendChild(d);
+  });
+}
+
+// 次の授乳
+function calcNextFeeding() {
+  const latest = DB.logs.find(l => l.type==="milk-fed");
+  if (!latest) return;
+  const dt = new Date(latest.nextFeeding);
+  document.getElementById("nextFeed").textContent =
+    "次の授乳：" + dt.toLocaleString();
+}
+
+// ❄️ 冷却
+let cooldownTimer = null;
+let cooldownLeft = 0;
+
+function calcCoolSeconds(temp, vol) {
+  const targetTemp = 40;
+  const baseTime = 114;
+  return Math.round(baseTime * (vol / 200) * ((temp - targetTemp) / 30));
+}
+
+function autoStartCooldownFromMilk() {
+  const latest = DB.logs.find(l => l.type==="milk-made");
+  if (!latest) return;
+  startCooldown(calcCoolSeconds(latest.temp, latest.vol));
+}
+
+function manualStartCooldown() {
+  const temp = Number(document.getElementById("startTemp").value);
+  const vol = Number(document.getElementById("milkVol").value);
+  startCooldown(calcCoolSeconds(temp, vol));
+}
+
+function startCooldown(seconds) {
+  if (cooldownTimer) clearInterval(cooldownTimer);
+  cooldownLeft = seconds;
+  updateCooldownDisplay();
+
+  cooldownTimer = setInterval(() => {
+    cooldownLeft--;
+    updateCooldownDisplay();
+
+    if (cooldownLeft <= 0) {
+      clearInterval(cooldownTimer);
+      cooldownTimer = null;
+      document.getElementById("cooldownStatus").textContent =
+        "❄️ 冷却完了！もうあげられます！";
+      document.getElementById("alarmSound").play().catch(()=>{});
+      if (navigator.vibrate) navigator.vibrate([200,100,200]);
+    }
+  }, 1000);
+}
+
+function updateCooldownDisplay() {
+  const m = Math.floor(cooldownLeft / 60);
+  const s = cooldownLeft % 60;
+  document.getElementById("cooldownStatus").textContent =
+    cooldownLeft <= 0
+      ? "冷却完了！"
+      : `❄️ 冷却中… 残り ${m}分${s.toString().padStart(2,"0")}秒`;
+}
 </script>
 
-
-
-
-
+</body>
 </html>
