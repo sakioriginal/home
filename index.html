@@ -2,61 +2,178 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>育児ログ（ミルク・オムツ・冷却）</title>
+<title>育児ログ（フル版）</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-  body {
-    font-family: sans-serif; background:#f4f4f4; padding:20px;
-  }
-  h1 { text-align:center; }
-  .card {
-    background:white; margin:15px 0; padding:15px;
-    border-radius:12px; box-shadow:0 2px 6px rgba(0,0,0,0.1);
-  }
-  button {
-    padding:10px 16px; margin:5px 0;
-    font-size:16px; border:none; border-radius:6px;
-    background:#4CAF50; color:white;
-  }
-  input {
-    padding:5px; font-size:16px; width:80%;
-    margin:5px;
-  }
-  #logs .log { padding:8px 0; border-bottom:1px solid #ddd; }
+/* ===============================
+   全体デザイン（スマホ最適化）
+=============================== */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  background:#f4f4f4;
+  margin:0;
+  padding:10px;
+}
+h1 {
+  text-align:center;
+  margin:10px 0 20px;
+}
+.card {
+  background:white;
+  margin:10px 0;
+  padding:12px;
+  border-radius:10px;
+  box-shadow:0 1px 4px rgba(0,0,0,0.1);
+}
+button {
+  padding:8px 12px;
+  margin:5px 0;
+  font-size:16px;
+  border:none;
+  border-radius:6px;
+  background:#4CAF50;
+  color:white;
+}
+.smallBtn {
+  padding:4px 8px;
+  font-size:12px;
+  background:#0288d1;
+}
+input, select, textarea {
+  padding:6px;
+  margin:4px 0;
+  font-size:15px;
+  width:100%;
+  box-sizing:border-box;
+}
+
+
+
+/* ===============================
+   ログ表示
+=============================== */
+.log {
+  padding:8px;
+  border-bottom:1px solid #ddd;
+  display:flex;
+  flex-direction:column;
+}
+.logTop {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.logBtns {
+  display:flex;
+  gap:10px;
+}
+
+/* ===============================
+   履歴折りたたみ
+=============================== */
+#logsContainer {
+  display:none;
+}
+
+/* ===============================
+   ⚙️ 設定ボタン
+=============================== */
+#gear {
+  position:fixed;
+  top:10px;
+  right:12px;
+  font-size:26px;
+  cursor:pointer;
+}
+#settingsPanel {
+  display:none;
+  background:white;
+  padding:10px;
+  border-radius:8px;
+  box-shadow:0 1px 4px rgba(0,0,0,0.2);
+}
+
+/* ===============================
+   モーダル（iOS風）
+=============================== */
+#modalBG {
+  position:fixed;
+  top:0; left:0;
+  width:100%; height:100%;
+  background:rgba(0,0,0,0.35);
+  display:none;
+  justify-content:center;
+  align-items:center;
+  z-index:999;
+}
+#modal {
+  background:white;
+  width:90%;
+  max-width:380px;
+  border-radius:12px;
+  padding:16px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.25);
+}
+.modalTitle {
+  font-size:18px;
+  margin-bottom:10px;
+}
+.modalBtnRow {
+  margin-top:12px;
+  display:flex;
+  justify-content:space-between;
+}
+.modalClose {
+  background:#aaa;
+}
+textarea {
+  height:60px;
+}
 </style>
 </head>
 
 <body>
 
-<h1>育児ログ（家族共有版）</h1>
+<h1>育児ログ</h1>
 
-<!-- ▼▼ 初回設定画面 ▼▼ -->
-<div id="setupPage" class="card" style="display:none;">
-  <h2>🔐 初期設定（初回のみ）</h2>
-  <p>家族の誰か1人の APIキー と BIN_ID を入力してください。</p>
-
-  <input id="apiKeyInput" placeholder="API KEY を入力">
-  <input id="binIdInput" placeholder="BIN ID を入力">
-
+<!-- ⚙️ 設定 -->
+<div id="gear" onclick="toggleSettings()">⚙️</div>
+<div id="settingsPanel">
+  <h3>設定</h3>
+  使用者名（端末）  
+  <input id="username" placeholder="あなたの名前">
+  <button onclick="saveUsername()">保存</button>
+  <hr>
+  API KEY  
+  <input id="apiKeyInput">
+  BIN ID  
+  <input id="binIdInput">
   <button onclick="saveInitialSettings()">保存</button>
 </div>
 
+<!-- 初回設定 -->
+<div id="setupPage" class="card" style="display:none;">
+  <h2>初回設定</h2>
+  <input id="apiKeyInput2" placeholder="API KEY">
+  <input id="binIdInput2" placeholder="BIN ID">
+  <button onclick="saveInitialSettings2()">保存</button>
+</div>
 
-<!-- ▼▼ 本編アプリ ▼▼ -->
+<!-- メインUI -->
 <div id="mainApp" style="display:none;">
 
   <!-- ミルク -->
   <div class="card">
-    <h2>🍼 ミルク管理</h2>
-    <button onclick="makeMilk()">ミルクを作った</button>
-    <button onclick="fedMilk()">飲ませた（量を入力）</button>
+    <h2>🍼 ミルク</h2>
+    <button onclick="makeMilk()">作った</button>
+    <button onclick="fedMilk()">飲ませた</button>
 
-    <br><br>
-    授乳間隔：
-    <select id="interval">
-      <option value="3">3時間</option>
+    <br>
+    授乳間隔：  
+    <select id="interval" onchange="onIntervalChange()">
       <option value="2.5">2.5時間</option>
+      <option value="3">3時間</option>
       <option value="4">4時間</option>
     </select>
 
@@ -65,15 +182,11 @@
 
   <!-- 冷却 -->
   <div class="card">
-    <h2>❄️ ミルク冷却</h2>
-    初期温度：<input id="startTemp" type="number" value="70"> ℃  
-    量：<input id="milkVol" type="number" value="200"> ml  
-    <button onclick="manualStartCooldown()">冷却時間を計算して開始</button>
+    <h2>❄️ 冷却</h2>
+    初期温度：<input id="startTemp" type="number" value="70">  
+    量：<input id="milkVol" type="number" value="200">  
+    <button onclick="manualStartCooldown()">冷却開始</button>
     <h3 id="cooldownStatus">--</h3>
-
-    <audio id="alarmSound">
-      <source src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg">
-    </audio>
   </div>
 
   <!-- オムツ -->
@@ -83,225 +196,410 @@
     <button onclick="addDiaper('poo')">うんち</button>
   </div>
 
+  <!-- 新規追加 -->
+  <div class="card">
+    <h2>＋ 手動追加</h2>
+    <button onclick="manualAdd('milk-made')">🍼 ミルク作成</button>
+    <button onclick="manualAdd('milk-fed')">🍼 授乳</button>
+    <button onclick="manualAdd('pee')">💧 おしっこ</button>
+    <button onclick="manualAdd('poo')">💩 うんち</button>
+    <button onclick="manualAdd('memo')">📝 メモ</button>
+  </div>
+
   <!-- ログ -->
   <div class="card">
-    <h2>📖 ログ一覧</h2>
-    <div id="logs">読み込み中…</div>
+    <h2 onclick="toggleLogs()">📖 履歴 ▼</h2>
+    <div id="logsContainer">
+      <div id="logs">読み込み中…</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- 編集モーダル -->
+<div id="modalBG">
+  <div id="modal">
+    <div class="modalTitle">編集</div>
+
+    <label>種類</label>
+    <select id="m_type">
+      <option value="milk-made">ミルク作成</option>
+      <option value="milk-fed">授乳</option>
+      <option value="pee">おしっこ</option>
+      <option value="poo">うんち</option>
+      <option value="memo">メモ</option>
+    </select>
+
+    <label>時刻</label>
+    <input type="datetime-local" id="m_time">
+
+    <label>量(ml)</label>
+    <input type="number" id="m_amount">
+
+    <label>温度(℃)</label>
+    <input type="number" id="m_temp">
+
+    <label>メモ</label>
+    <textarea id="m_note"></textarea>
+
+    <label>user</label>
+    <input id="m_user">
+
+    <div class="modalBtnRow">
+      <button class="modalClose" onclick="closeModal()">キャンセル</button>
+      <button onclick="saveEdit()">保存</button>
+    </div>
   </div>
 </div>
 
-
 <script>
-// ---------------------------------------------------------------
-// ① localStorage の API_KEY/BIN_ID をチェック
-// ---------------------------------------------------------------
-function checkSettings() {
+/* ==========
+   JavaScript
+========== */
+
+let DB = { logs: [] };
+let editIndex = null;
+
+/* 共通関数 */
+function nowDT() {
+  return new Date().toISOString().slice(0,16);
+}
+
+/* 設定UI */
+function toggleSettings(){
+  settingsPanel.style.display =
+    settingsPanel.style.display === "none" ? "block" : "none";
+}
+function saveUsername(){
+  localStorage.setItem("username", username.value);
+  alert("保存しました");
+}
+
+/* 初回設定 */
+function checkSettings(){
   const api = localStorage.getItem("jsonbin_api_key");
   const bin = localStorage.getItem("jsonbin_bin_id");
-
-  if (!api || !bin) {
-    // 未設定 → 初回設定UIを表示
-    document.getElementById("setupPage").style.display = "block";
+  if(!api || !bin){
+    setupPage.style.display="block";
   } else {
-    // 設定済 → 本編を表示
-    document.getElementById("mainApp").style.display = "block";
-    refresh(); // データ読み込み開始
+    mainApp.style.display="block";
+    loadIntervalSetting();
+    refresh();
   }
 }
 checkSettings();
 
+/* JSONBin */
+async function loadData(){
+  const api = localStorage.getItem("jsonbin_api_key");
+  const bin = localStorage.getItem("jsonbin_bin_id");
+  const r = await fetch(`https://api.jsonbin.io/v3/b/${bin}`,{
+    headers:{"X-Master-Key":api}
+  });
+  const j = await r.json();
+  return j.record || {logs:[]};
+}
+async function saveData(d){
+  const api = localStorage.getItem("jsonbin_api_key");
+  const bin = localStorage.getItem("jsonbin_bin_id");
+  await fetch(`https://api.jsonbin.io/v3/b/${bin}`,{
+    method:"PUT",
+    headers:{
+      "Content-Type":"application/json",
+      "X-Master-Key":api
+    },
+    body:JSON.stringify(d)
+  });
+}
 
-// ---------------------------------------------------------------
-// ② 初回設定の保存
-// ---------------------------------------------------------------
-function saveInitialSettings() {
-  const api = document.getElementById("apiKeyInput").value;
-  const bin = document.getElementById("binIdInput").value;
-
-  if (!api || !bin) {
-    alert("API KEY と BIN_ID を入力してください");
-    return;
-  }
-
-  localStorage.setItem("jsonbin_api_key", api);
-  localStorage.setItem("jsonbin_bin_id", bin);
-
-  alert("設定を保存しました！");
+/* 初回保存 */
+function saveInitialSettings(){
+  localStorage.setItem("jsonbin_api_key", apiKeyInput.value);
+  localStorage.setItem("jsonbin_bin_id", binIdInput.value);
+  alert("保存しました");
+  location.reload();
+}
+function saveInitialSettings2(){
+  localStorage.setItem("jsonbin_api_key", apiKeyInput2.value);
+  localStorage.setItem("jsonbin_bin_id", binIdInput2.value);
+  alert("保存しました");
   location.reload();
 }
 
-
-// ---------------------------------------------------------------
-// ③ JSONBin load/save（localStorageを使用）
-// ---------------------------------------------------------------
-async function loadData() {
-  const api = localStorage.getItem("jsonbin_api_key");
-  const bin = localStorage.getItem("jsonbin_bin_id");
-  const url = `https://api.jsonbin.io/v3/b/${bin}`;
-
-  const res = await fetch(url, {
-    headers: { "X-Master-Key": api }
-  });
-
-  const json = await res.json();
-  return json.record || { logs: [] };
-}
-
-async function saveData(data) {
-  const api = localStorage.getItem("jsonbin_api_key");
-  const bin = localStorage.getItem("jsonbin_bin_id");
-  const url = `https://api.jsonbin.io/v3/b/${bin}`;
-
-  await fetch(url, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Master-Key": api
-    },
-    body: JSON.stringify(data)
-  });
-}
-
-
-// ---------------------------------------------------------------
-// ④ メイン処理（あなたの元コード）
-// ---------------------------------------------------------------
-let DB = { logs: [] };
-
-async function refresh() {
+/* メイン更新 */
+async function refresh(){
   DB = await loadData();
+  sortLogs();
   renderLogs();
   calcNextFeeding();
 }
 
-// 🍼 ミルク
-function makeMilk() {
+/* ソート */
+function sortLogs(){
+  DB.logs.sort((a,b)=> b.time - a.time);
+}
+
+/* ミルク作成 */
+function makeMilk(){
+  DB.logs.unshift({
+    type:"milk-made",
+    time:Date.now(),
+    temp:Number(startTemp.value),
+    vol:Number(milkVol.value),
+    user:localStorage.getItem("username")||"unknown",
+    note:""
+  });
+  saveData(DB);
+  refresh();
+}
+
+/* 授乳 */
+function fedMilk(){
+  const amount = prompt("量(ml)","150");
+  if(!amount) return;
   const now = Date.now();
+  const next = now + Number(interval.value)*3600*1000;
 
   DB.logs.unshift({
-    type: "milk-made",
-    time: now,
-    temp: Number(document.getElementById("startTemp").value),
-    vol:  Number(document.getElementById("milkVol").value)
+    type:"milk-fed",
+    time:now,
+    amount:Number(amount),
+    nextFeeding:next,
+    user:localStorage.getItem("username")||"unknown",
+    note:""
   });
-
   saveData(DB);
-  renderLogs();
-  autoStartCooldownFromMilk();
+  refresh();
 }
 
-function fedMilk() {
-  const amount = prompt("飲んだ量（ml）", "150");
-  if (!amount) return;
-
-  const interval = parseFloat(document.getElementById("interval").value);
-  const now = Date.now();
-  const next = now + interval * 60 * 60 * 1000;
-
+/* オムツ */
+function addDiaper(k){
   DB.logs.unshift({
-    type: "milk-fed",
-    time: now,
-    amount: Number(amount),
-    nextFeeding: next
+    type:"diaper",
+    kind:k,
+    time:Date.now(),
+    user:localStorage.getItem("username")||"unknown",
+    note:""
   });
-
   saveData(DB);
-  renderLogs();
-  calcNextFeeding();
+  refresh();
 }
 
-// 💩 オムツ
-function addDiaper(kind) {
-  DB.logs.unshift({
-    type: "diaper",
-    kind,
-    time: Date.now()
-  });
-
-  saveData(DB);
-  renderLogs();
+/* 手動追加 */
+function manualAdd(t){
+  // 編集モーダルを流用（新規作成モード）
+  editIndex = null;
+  openModalForType(t);
 }
 
-// 📖 表示
-function renderLogs() {
-  const box = document.getElementById("logs");
-  box.innerHTML = "";
-
-  DB.logs.forEach(l => {
-    const d = document.createElement("div");
-    d.className = "log";
+/* ログ描画 */
+function renderLogs(){
+  logs.innerHTML="";
+  DB.logs.forEach((l,i)=>{
+    const div = document.createElement("div");
+    div.className="log";
     const t = new Date(l.time).toLocaleString();
 
-    if (l.type === "milk-made") {
-      d.textContent = `🍼 ミルク作成：${t}（${l.vol}ml / ${l.temp}℃）`;
-    } else if (l.type === "milk-fed") {
-      d.textContent = `👶 飲ませた：${t} / ${l.amount}ml`;
-    } else if (l.type==="diaper") {
-      d.textContent = (l.kind==="pee"?"💧 おしっこ":"💩 うんち") + "：" + t;
+    let title="";
+    if(l.type==="milk-made") title=`🍼 ミルク作成 ${l.vol}ml / ${l.temp}℃`;
+    else if(l.type==="milk-fed") title=`🍼 授乳 ${l.amount}ml`;
+    else if(l.type==="diaper"){
+      title = (l.kind==="pee"?"💧 おしっこ":"💩 うんち");
+    }
+    else if(l.type==="memo") title = `📝 メモ`;
+
+    const top = document.createElement("div");
+    top.className="logTop";
+    top.innerHTML = `<div>${title}<br><small>${t} - ${l.user}</small></div>`;
+
+    const btns = document.createElement("div");
+    btns.className="logBtns";
+
+    const editBtn = document.createElement("button");
+    editBtn.textContent="✎";
+    editBtn.className="smallBtn";
+    editBtn.onclick = ()=>openModal(i);
+
+    const delBtn = document.createElement("button");
+    delBtn.textContent="🗑";
+    delBtn.className="smallBtn";
+    delBtn.style.background="#d32f2f";
+    delBtn.onclick = ()=>deleteLog(i);
+
+    btns.appendChild(editBtn);
+    btns.appendChild(delBtn);
+
+    top.appendChild(btns);
+    div.appendChild(top);
+
+    if(l.note){
+      const note = document.createElement("div");
+      note.innerHTML = `<small>メモ：${l.note}</small>`;
+      div.appendChild(note);
     }
 
-    box.appendChild(d);
+    logs.appendChild(div);
   });
 }
 
-// 次の授乳
-function calcNextFeeding() {
-  const latest = DB.logs.find(l => l.type==="milk-fed");
-  if (!latest) return;
-  const dt = new Date(latest.nextFeeding);
-  document.getElementById("nextFeed").textContent =
-    "次の授乳：" + dt.toLocaleString();
+/* ログ削除 */
+function deleteLog(i){
+  if(!confirm("削除しますか？")) return;
+  DB.logs.splice(i,1);
+  saveData(DB);
+  refresh();
 }
 
-// ❄️ 冷却
-let cooldownTimer = null;
-let cooldownLeft = 0;
+/* ログ編集モーダル起動 */
+function openModal(i){
+  editIndex = i;
+  const l = DB.logs[i];
 
-function calcCoolSeconds(temp, vol) {
-  const targetTemp = 40;
-  const baseTime = 114;
-  return Math.round(baseTime * (vol / 200) * ((temp - targetTemp) / 30));
+  m_type.value = l.type;
+  m_time.value = new Date(l.time).toISOString().slice(0,16);
+
+  m_amount.value = l.amount || "";
+  m_temp.value = l.temp || "";
+  m_note.value = l.note || "";
+  m_user.value = l.user || "unknown";
+
+  if(l.type==="diaper") m_type.value = l.kind;
+
+  modalBG.style.display="flex";
 }
 
-function autoStartCooldownFromMilk() {
-  const latest = DB.logs.find(l => l.type==="milk-made");
-  if (!latest) return;
-  startCooldown(calcCoolSeconds(latest.temp, latest.vol));
+/* モーダル：新規追加用 */
+function openModalForType(t){
+  editIndex = null;
+
+  m_type.value = t;
+  m_time.value = nowDT();
+  m_amount.value = "";
+  m_temp.value = "";
+  m_note.value = "";
+  m_user.value = localStorage.getItem("username")||"unknown";
+
+  modalBG.style.display="flex";
 }
 
-function manualStartCooldown() {
-  const temp = Number(document.getElementById("startTemp").value);
-  const vol = Number(document.getElementById("milkVol").value);
-  startCooldown(calcCoolSeconds(temp, vol));
+/* モーダル閉じる */
+function closeModal(){
+  modalBG.style.display="none";
 }
 
-function startCooldown(seconds) {
-  if (cooldownTimer) clearInterval(cooldownTimer);
-  cooldownLeft = seconds;
+/* 保存 */
+function saveEdit(){
+  const type = m_type.value;
+  const time = new Date(m_time.value).getTime();
+
+  let obj = {
+    type:type==="pee"||type==="poo"?"diaper":type,
+    time:time,
+    user:m_user.value || "unknown",
+    note:m_note.value||""
+  };
+
+  if(type==="milk-fed"){
+    obj.amount = Number(m_amount.value||0);
+    obj.nextFeeding = time + Number(interval.value)*3600*1000;
+  }
+  if(type==="milk-made"){
+    obj.vol = Number(m_amount.value||0);
+    obj.temp = Number(m_temp.value||0);
+  }
+  if(type==="pee"||type==="poo"){
+    obj.kind = type;
+  }
+
+  if(editIndex===null){
+    DB.logs.unshift(obj);
+  } else {
+    DB.logs[editIndex]=obj;
+  }
+
+  sortLogs();
+  saveData(DB);
+  refresh();
+  closeModal();
+}
+
+/* 次の授乳 */
+function calcNextFeeding(){
+  const feeds = DB.logs.filter(x=>x.type==="milk-fed");
+  if(feeds.length===0){
+    nextFeed.textContent="次の授乳：--";
+    return;
+  }
+  feeds.sort((a,b)=>b.time-a.time);
+  const latest = feeds[0];
+  nextFeed.textContent="次の授乳："+ new Date(latest.nextFeeding).toLocaleString();
+}
+
+/* 授乳間隔保存 */
+function onIntervalChange(){
+  saveInterval();
+  recalcNextFeed();
+}
+function saveInterval(){
+  localStorage.setItem("feed_interval", interval.value);
+}
+function loadIntervalSetting(){
+  const v = localStorage.getItem("feed_interval");
+  if(v) interval.value=v;
+}
+function recalcNextFeed(){
+  const feeds = DB.logs.filter(x=>x.type==="milk-fed");
+  if(feeds.length===0) return;
+  feeds.sort((a,b)=>b.time-a.time);
+  const l=feeds[0];
+  l.nextFeeding = l.time + Number(interval.value)*3600*1000;
+  saveData(DB);
+  calcNextFeeding();
+}
+
+/* 履歴折りたたみ */
+function toggleLogs(){
+  logsContainer.style.display =
+    logsContainer.style.display==="none" ? "block" : "none";
+}
+
+/* 冷却 */
+let cooldownTimer=null;
+let cooldownLeft=0;
+
+function calcCoolSeconds(temp,vol){
+  const target=40, base=114;
+  return Math.round(base*(vol/200)*((temp-target)/30));
+}
+function manualStartCooldown(){
+  cooldownLeft = calcCoolSeconds(
+    Number(startTemp.value),
+    Number(milkVol.value)
+  );
+  startCooldown();
+}
+function startCooldown(){
+  if(cooldownTimer) clearInterval(cooldownTimer);
   updateCooldownDisplay();
-
-  cooldownTimer = setInterval(() => {
+  cooldownTimer=setInterval(()=>{
     cooldownLeft--;
     updateCooldownDisplay();
-
-    if (cooldownLeft <= 0) {
+    if(cooldownLeft<=0){
       clearInterval(cooldownTimer);
-      cooldownTimer = null;
-      document.getElementById("cooldownStatus").textContent =
-        "❄️ 冷却完了！もうあげられます！";
-      document.getElementById("alarmSound").play().catch(()=>{});
-      if (navigator.vibrate) navigator.vibrate([200,100,200]);
+      cooldownTimer=null;
+      cooldownStatus.textContent="❄️ 冷却完了！";
+      if(navigator.vibrate) navigator.vibrate([200,100,200]);
     }
-  }, 1000);
+  },1000);
 }
-
-function updateCooldownDisplay() {
-  const m = Math.floor(cooldownLeft / 60);
-  const s = cooldownLeft % 60;
-  document.getElementById("cooldownStatus").textContent =
-    cooldownLeft <= 0
-      ? "冷却完了！"
-      : `❄️ 冷却中… 残り ${m}分${s.toString().padStart(2,"0")}秒`;
+function updateCooldownDisplay(){
+  if(cooldownLeft<=0){
+    cooldownStatus.textContent="冷却完了！";
+    return;
+  }
+  const m=Math.floor(cooldownLeft/60);
+  const s=cooldownLeft%60;
+  cooldownStatus.textContent=`❄️ 冷却中… 残り ${m}分${s.toString().padStart(2,"0")}秒`;
 }
 </script>
 
