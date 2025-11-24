@@ -48,8 +48,6 @@ input, select, textarea {
   box-sizing:border-box;
 }
 
-
-
 /* ===============================
    ログ表示
 =============================== */
@@ -203,6 +201,8 @@ textarea {
     <button onclick="manualAdd('milk-fed')">🍼 授乳</button>
     <button onclick="manualAdd('pee')">💧 おしっこ</button>
     <button onclick="manualAdd('poo')">💩 うんち</button>
+<button onclick="manualAdd('sleep')">😴 寝た</button>
+<button onclick="manualAdd('wake')">🌞 起きた</button>
     <button onclick="manualAdd('memo')">📝 メモ</button>
   </div>
 
@@ -227,6 +227,9 @@ textarea {
       <option value="milk-fed">授乳</option>
       <option value="pee">おしっこ</option>
       <option value="poo">うんち</option>
+<option value="sleep">寝た</option>
+<option value="wake">起きた</option>
+
       <option value="memo">メモ</option>
     </select>
 
@@ -406,6 +409,15 @@ function renderLogs(){
     else if(l.type==="diaper"){
       title = (l.kind==="pee"?"💧 おしっこ":"💩 うんち");
     }
+else if(l.type === "sleep"){
+  title = "😴 寝た";
+}
+else if(l.type === "wake"){
+  title = "🌞 起きた";
+}
+
+
+
     else if(l.type==="memo") title = `📝 メモ`;
 
     const top = document.createElement("div");
@@ -510,7 +522,12 @@ function saveEdit(){
   if(type==="pee"||type==="poo"){
     obj.kind = type;
   }
-
+if(type === "sleep"){
+  obj.type = "sleep";
+}
+if(type === "wake"){
+  obj.type = "wake";
+}
   if(editIndex===null){
     DB.logs.unshift(obj);
   } else {
