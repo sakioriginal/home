@@ -263,9 +263,23 @@ textarea {
 let DB = { logs: [] };
 let editIndex = null;
 
+function toLocalDateTimeInputValue(date){
+  const pad = n => n.toString().padStart(2,"0");
+
+  const y = date.getFullYear();
+  const m = pad(date.getMonth()+1);
+  const d = pad(date.getDate());
+  const hh = pad(date.getHours());
+  const mm = pad(date.getMinutes());
+
+  return `${y}-${m}-${d}T${hh}:${mm}`;
+}
+  
+   
 /* 共通関数 */
 function nowDT() {
-  return new Date().toISOString().slice(0,16);
+  return toLocalDateTimeInputValue(new Date());
+  /*return new Date().toISOString().slice(0,16);*/
 }
 
 /* 設定UI */
@@ -468,7 +482,9 @@ function openModal(i){
   const l = DB.logs[i];
 
   m_type.value = l.type;
-  m_time.value = new Date(l.time).toISOString().slice(0,16);
+  /*m_time.value = new Date(l.time).toISOString().slice(0,16);*/
+  m_time.value = toLocalDateTimeInputValue(new Date(l.time));
+
 
   m_amount.value = l.amount || "";
   m_temp.value = l.temp || "";
