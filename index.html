@@ -204,6 +204,8 @@ textarea {
 <button onclick="manualAdd('sleep')">😴 寝た</button>
 <button onclick="manualAdd('wake')">🌞 起きた</button>
     <button onclick="manualAdd('memo')">📝 メモ</button>
+    <button onclick="manualAdd('weaning')">🍚 離乳食</button>
+ 
   </div>
 
   <!-- ログ -->
@@ -244,6 +246,17 @@ textarea {
 
     <label>メモ</label>
     <textarea id="m_note"></textarea>
+
+
+   <label>メニュー</label>
+   <input id="m_menu">
+
+   <label>飲み物</label>
+   <input id="m_drink">
+
+   <label>何口</label>
+   <input type="number" id="m_bites">
+
 
     <label>user</label>
     <input id="m_user">
@@ -420,6 +433,7 @@ function renderLogs(){
     let title="";
     if(l.type==="milk-made") title=`🍼 ミルク作成 ${l.vol}ml / ${l.temp}℃`;
     else if(l.type==="milk-fed") title=`🍼 授乳 ${l.amount}ml`;
+    else if(l.type === "weaning"){title = `🍚 離乳食 ${l.menu || ""}（${l.bites||0}口）`;}
     else if(l.type==="diaper"){
       title = (l.kind==="pee"?"💧 おしっこ":"💩 うんち");
     }
@@ -458,6 +472,16 @@ else if(l.type === "wake"){
     top.appendChild(btns);
     div.appendChild(top);
 
+    if(l.type === "weaning"){
+      const detail = document.createElement("div");
+      detail.innerHTML =
+       `<small>飲み物：${l.drink||"-"} / 次の授乳：${ new Date(l.nextFeeding).toLocaleString() }</small>`;
+     div.appendChild(detail);
+    }
+
+
+
+     
     if(l.note){
       const note = document.createElement("div");
       note.innerHTML = `<small>メモ：${l.note}</small>`;
@@ -490,6 +514,9 @@ function openModal(i){
   m_temp.value = l.temp || "";
   m_note.value = l.note || "";
   m_user.value = l.user || "unknown";
+  m_menu.value = l.menu || "";
+  m_drink.value = l.drink || "";
+  m_bites.value = l.bites || "";
 
   if(l.type==="diaper") m_type.value = l.kind;
 
@@ -506,6 +533,10 @@ function openModalForType(t){
   m_temp.value = "";
   m_note.value = "";
   m_user.value = localStorage.getItem("username")||"unknown";
+  m_menu.value = "";
+  m_drink.value = "";
+  m_bites.value = "";
+
 
   modalBG.style.display="flex";
 }
@@ -544,11 +575,28 @@ if(type === "sleep"){
 if(type === "wake"){
   obj.type = "wake";
 }
+if(type === "weaning"){
+  obj.menu = m_menu.value || "";
+  obj.drink = m_drink.value || "";
+  obj.bites = Number(m_bites.value || 0);
+
+  // 離乳食を「授乳扱い」にする
+  obj.nextFeeding = time + Number(interval.value) * 3600 * 1000;
+}
+
+   
   if(editIndex===null){
     DB.logs.unshift(obj);
   } else {
     DB.logs[editIndex]=obj;
   }
+
+
+  // 離乳食を「授乳扱い」にする
+  obj.nextFeeding = time + Number(interval.value) * 3600 * 1000;
+}
+
+   
 
   sortLogs();
   saveData(DB);
@@ -558,7 +606,7 @@ if(type === "wake"){
 
 /* 次の授乳 */
 function calcNextFeeding(){
-  const feeds = DB.logs.filter(x=>x.type==="milk-fed");
+  const feeds = DB.logs.filter(x => x.type==="milk-fed" || x.type==="weaning");
   if(feeds.length===0){
     nextFeed.textContent="次の授乳：--";
     return;
