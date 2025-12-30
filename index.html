@@ -546,63 +546,68 @@ function closeModal(){
   modalBG.style.display="none";
 }
 
-/* 保存 */
+/*保存*/
 function saveEdit(){
   const type = m_type.value;
   const time = new Date(m_time.value).getTime();
 
   let obj = {
-    type:type==="pee"||type==="poo"?"diaper":type,
-    time:time,
-    user:m_user.value || "unknown",
-    note:m_note.value||""
+    type: (type==="pee"||type==="poo") ? "diaper" : type,
+    time: time,
+    user: m_user.value || "unknown",
+    note: m_note.value || ""
   };
 
-  if(type==="milk-fed"){
-    obj.amount = Number(m_amount.value||0);
-    obj.nextFeeding = time + Number(interval.value)*3600*1000;
+  // 授乳
+  if(type === "milk-fed"){
+    obj.amount = Number(m_amount.value || 0);
+    obj.nextFeeding = time + Number(interval.value) * 3600 * 1000;
   }
-  if(type==="milk-made"){
-    obj.vol = Number(m_amount.value||0);
-    obj.temp = Number(m_temp.value||0);
+
+  // ミルク作成
+  if(type === "milk-made"){
+    obj.vol = Number(m_amount.value || 0);
+    obj.temp = Number(m_temp.value || 0);
   }
-  if(type==="pee"||type==="poo"){
+
+  // オムツ
+  if(type === "pee" || type === "poo"){
     obj.kind = type;
   }
-if(type === "sleep"){
-  obj.type = "sleep";
-}
-if(type === "wake"){
-  obj.type = "wake";
-}
-if(type === "weaning"){
-  obj.menu = m_menu.value || "";
-  obj.drink = m_drink.value || "";
-  obj.bites = Number(m_bites.value || 0);
 
-  // 離乳食を「授乳扱い」にする
-  obj.nextFeeding = time + Number(interval.value) * 3600 * 1000;
-}
-
-   
-  if(editIndex===null){
-    DB.logs.unshift(obj);
-  } else {
-    DB.logs[editIndex]=obj;
+  // 睡眠
+  if(type === "sleep"){
+    obj.type = "sleep";
   }
 
+  // 起床
+  if(type === "wake"){
+    obj.type = "wake";
+  }
 
-  // 離乳食を「授乳扱い」にする
-  obj.nextFeeding = time + Number(interval.value) * 3600 * 1000;
-}
+  // 🍚 離乳食
+  if(type === "weaning"){
+    obj.menu = m_menu.value || "";
+    obj.drink = m_drink.value || "";
+    obj.bites = Number(m_bites.value || 0);
 
-   
+    // 👉 授乳扱いにする（次回授乳を更新）
+    obj.nextFeeding = time + Number(interval.value) * 3600 * 1000;
+  }
+
+  // 新規 or 編集
+  if(editIndex === null){
+    DB.logs.unshift(obj);
+  } else {
+    DB.logs[editIndex] = obj;
+  }
 
   sortLogs();
   saveData(DB);
   refresh();
   closeModal();
 }
+
 
 /* 次の授乳 */
 function calcNextFeeding(){
