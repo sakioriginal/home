@@ -658,12 +658,31 @@ function calcCoolSeconds(temp,vol){
   return Math.round(base*(vol/200)*((temp-target)/30));
 }
 function manualStartCooldown(){
+
+  // ① 冷却時間計算
   cooldownLeft = calcCoolSeconds(
     Number(startTemp.value),
     Number(milkVol.value)
   );
+
+  // ② 🍼ミルク作成ログを追加
+  DB.logs.unshift({
+    type: "milk-made",
+    time: Date.now(),
+    temp: Number(startTemp.value),
+    vol: Number(milkVol.value),
+    user: localStorage.getItem("username") || "unknown",
+    note: "冷却開始ボタンから自動記録"
+  });
+
+  // ③ 保存
+  saveData(DB);
+  refresh();
+
+  // ④ 冷却カウントダウン開始
   startCooldown();
 }
+
 function startCooldown(){
   if(cooldownTimer) clearInterval(cooldownTimer);
   updateCooldownDisplay();
